@@ -5,150 +5,199 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Secure Connect</title>
 
+<!-- Tailwind CSS -->
 <script src="https://cdn.tailwindcss.com"></script>
+<!-- PeerJS -->
 <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+<!-- Material Icons -->
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<!-- Animations -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 
 <style>
-body{background:#000;color:#fff;overflow:hidden}
-.glass{background:rgba(20,20,20,.65);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.08)}
-.input{background:rgba(0,0,0,.6);border:1px solid #333}
-.input:focus{border-color:#06b6d4;box-shadow:0 0 12px rgba(6,182,212,.3)}
-#toast-box{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:1000;width:90%;max-width:380px}
-.toast{background:#111;border-left:4px solid #06b6d4;padding:12px;border-radius:6px;margin-bottom:10px}
+body { background:#000; color:#fff; overflow:hidden; }
+.glass { background:rgba(20,20,20,.65); backdrop-filter:blur(18px); border:1px solid rgba(255,255,255,.08); }
+.input { background:rgba(0,0,0,.6); border:1px solid #333; color:#fff; }
+.input:focus { border-color:#06b6d4; box-shadow:0 0 12px rgba(6,182,212,.3); }
+#toast-box { position:fixed; top:20px; left:50%; transform:translateX(-50%); z-index:1000; width:90%; max-width:380px; }
+.toast { background:#111; border-left:4px solid #06b6d4; padding:12px; border-radius:6px; margin-bottom:10px; }
 </style>
 </head>
-
 <body>
-
-<script>
-const API_URL="https://script.google.com/macros/s/AKfycbyiz_A075mO5pfqYXrJgTqNPfBBGICYNK0WNB1OxCuUHOdHX9jWClkymR1NNMD-M2uB/exec";
-</script>
 
 <div id="toast-box"></div>
 
 <div class="w-full h-screen flex items-center justify-center">
 
-<!-- LOGIN -->
-<div id="login" class="glass p-8 rounded-3xl w-80 animate__animated animate__fadeIn">
-  <div class="text-center mb-6">
-    <span class="material-icons text-6xl text-cyan-400">fingerprint</span>
-    <h1 class="text-xl font-bold tracking-widest mt-2">SECURE ACCESS</h1>
-    <p class="text-xs text-gray-400">Authorization Required</p>
+  <!-- LOGIN SCREEN -->
+  <div id="login" class="glass p-8 rounded-3xl w-80 animate__animated animate__fadeIn">
+    <div class="text-center mb-6">
+      <span class="material-icons text-6xl text-cyan-400">fingerprint</span>
+      <h1 class="text-xl font-bold tracking-widest mt-2">SECURE ACCESS</h1>
+      <p class="text-xs text-gray-400">Authorization Required</p>
+    </div>
+
+    <input id="email" type="email" placeholder="Email" class="input w-full p-3 rounded-xl mb-3 outline-none">
+    <input id="password" type="password" placeholder="Password" class="input w-full p-3 rounded-xl outline-none">
+
+    <button id="loginBtn" class="w-full mt-5 bg-gradient-to-r from-cyan-600 to-blue-600 p-4 rounded-xl font-bold tracking-widest">
+      ENTER
+    </button>
   </div>
 
-  <input id="email" type="email" placeholder="Email" class="input w-full p-3 rounded-xl mb-3 outline-none">
-  <input id="password" type="password" placeholder="Password" class="input w-full p-3 rounded-xl outline-none">
+  <!-- WAITING SCREEN -->
+  <div id="wait" class="hidden flex flex-col items-center text-center animate__animated animate__zoomIn">
+    <div class="w-24 h-24 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mb-6"></div>
+    <h2 class="text-xl font-bold">Waiting for approval</h2>
+    <p class="text-gray-400 text-sm mt-2">Host verification pending</p>
+  </div>
 
-  <button id="loginBtn" onclick="login()" class="w-full mt-5 bg-gradient-to-r from-cyan-600 to-blue-600 p-4 rounded-xl font-bold tracking-widest">
-    ENTER
-  </button>
-</div>
+  <!-- ADMIN DASHBOARD -->
+  <div id="admin" class="hidden fixed top-4 right-4 glass p-4 rounded-xl w-64">
+    <h3 class="text-xs text-cyan-400 font-bold mb-2">WAITING USERS</h3>
+    <div id="users" class="space-y-2"></div>
+  </div>
 
-<!-- WAIT -->
-<div id="wait" class="hidden flex flex-col items-center text-center">
-  <div class="w-24 h-24 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mb-6"></div>
-  <h2 class="text-xl font-bold">Waiting for approval</h2>
-</div>
-
-<!-- ADMIN -->
-<div id="admin" class="hidden fixed top-4 right-4 glass p-4 rounded-xl w-64">
-  <h3 class="text-xs text-cyan-400 font-bold mb-2">WAITING USERS</h3>
-  <div id="users" class="space-y-2"></div>
-</div>
-
-<!-- VIDEO -->
-<div id="video" class="hidden absolute inset-0 bg-black">
-  <video id="remote" autoplay playsinline class="w-full h-full object-cover"></video>
-  <video id="local" autoplay muted playsinline class="absolute bottom-4 right-4 w-36 rounded-xl border border-gray-600"></video>
-</div>
+  <!-- VIDEO ROOM -->
+  <div id="video" class="hidden absolute inset-0 bg-black">
+    <video id="remote" autoplay playsinline class="w-full h-full object-cover"></video>
+    <video id="local" autoplay muted playsinline class="absolute bottom-4 right-4 w-36 rounded-xl border border-gray-600"></video>
+    <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-4">
+      <button onclick="mute()" class="glass p-4 rounded-full">
+        <span class="material-icons">mic</span>
+      </button>
+      <button onclick="endCall()" class="bg-red-600 p-4 rounded-full">
+        <span class="material-icons">call_end</span>
+      </button>
+    </div>
+  </div>
 
 </div>
 
 <script>
-let user={},peer,stream;
-const HOST="SECURE_ADMIN_MASTER_ID_V1";
+const API_URL = "https://script.google.com/macros/s/AKfycbyiz_A075mO5pfqYXrJgTqNPfBBGICYNK0WNB1OxCuUHOdHX9jWClkymR1NNMD-M2uB/exec";
+let user = {}, peer, stream;
+const HOST = "SECURE_ADMIN_MASTER_ID_V1";
 
-function toast(msg,color="#06b6d4"){
-  const t=document.createElement("div");
-  t.className="toast";
-  t.style.borderLeftColor=color;
-  t.innerText=msg;
+// Toast notification
+function toast(msg, color="#06b6d4"){
+  const t = document.createElement("div");
+  t.className = "toast animate__animated animate__fadeInDown";
+  t.style.borderLeftColor = color;
+  t.innerText = msg;
   document.getElementById("toast-box").appendChild(t);
   setTimeout(()=>t.remove(),3000);
 }
 
+// API call wrapper
 async function api(action,payload){
-  const r=await fetch(API_URL,{
-    method:"POST",
-    headers:{ "Content-Type":"text/plain;charset=utf-8" },
-    body:JSON.stringify({action,payload})
+  try{
+    const r = await fetch(API_URL,{
+      method:"POST",
+      headers:{ "Content-Type":"text/plain;charset=utf-8" },
+      body:JSON.stringify({action,payload})
+    });
+    return r.json();
+  } catch(e){
+    toast("Connection error","#ef4444");
+    return null;
+  }
+}
+
+// DOMContentLoaded: attach login button
+document.addEventListener("DOMContentLoaded",()=>{
+  document.getElementById("loginBtn").addEventListener("click", async()=>{
+    const emailVal = document.getElementById("email").value.trim();
+    const passVal  = document.getElementById("password").value.trim();
+    const btn = document.getElementById("loginBtn");
+
+    if(!emailVal || !passVal){ toast("Enter credentials","#ef4444"); return; }
+
+    btn.disabled = true; btn.innerText = "VERIFYING...";
+
+    const r = await api("login",{email:emailVal,password:passVal});
+    if(!r || !r.success){
+      toast("Access denied","#ef4444");
+      btn.disabled=false; btn.innerText="ENTER";
+      return;
+    }
+
+    user = { email: emailVal, role: r.role };
+    document.getElementById("login").classList.add("hidden");
+
+    if(r.role === "admin"){
+      document.getElementById("video").classList.remove("hidden");
+      document.getElementById("admin").classList.remove("hidden");
+      initPeer(HOST);
+      pollAdmin();
+    } else {
+      document.getElementById("wait").classList.remove("hidden");
+      pollClient();
+    }
   });
-  return r.json();
-}
+});
 
-async function login(){
-  const emailVal = document.getElementById("email").value.trim();
-  const passVal  = document.getElementById("password").value.trim();
-  const btn = document.getElementById("loginBtn");
-
-  if(!emailVal || !passVal){
-    toast("Enter credentials","#ef4444");
-    return;
-  }
-
-  btn.disabled=true;
-  btn.innerText="VERIFYING...";
-
-  const r = await api("login",{ email:emailVal, password:passVal });
-
-  if(!r || !r.success){
-    toast("Access denied","#ef4444");
-    btn.disabled=false;
-    btn.innerText="ENTER";
-    return;
-  }
-
-  user={ email:emailVal, role:r.role };
-
-  document.getElementById("login").classList.add("hidden");
-
-  if(r.role==="admin"){
-    document.getElementById("video").classList.remove("hidden");
-    document.getElementById("admin").classList.remove("hidden");
-    initPeer(HOST);
-  } else {
-    document.getElementById("wait").classList.remove("hidden");
-    pollClient();
-  }
-}
-
+// Client polling
 function pollClient(){
-  const i=setInterval(async()=>{
-    const r=await api("check_status",{email:user.email});
-    if(r.status==="approved"){
-      clearInterval(i);
+  const interval = setInterval(async()=>{
+    const r = await api("check_status",{email:user.email});
+    if(r && r.status === "approved"){
+      clearInterval(interval);
+      toast("Access granted","#10b981");
       document.getElementById("wait").classList.add("hidden");
       document.getElementById("video").classList.remove("hidden");
       initPeer(null,true);
     }
+    if(r && r.status === "rejected"){ clearInterval(interval); location.reload(); }
   },3000);
 }
 
+// Admin polling
+function pollAdmin(){
+  setInterval(async()=>{
+    const r = await api("get_waiting");
+    const usersDiv = document.getElementById("users");
+    usersDiv.innerHTML = "";
+    if(r && r.users){
+      r.users.forEach(u=>{
+        const div = document.createElement("div");
+        div.className="flex justify-between items-center bg-gray-800 p-2 rounded";
+        div.innerHTML = `
+          <span class="text-xs truncate">${u.email}</span>
+          <div class="flex gap-1">
+            <button onclick="decide('${u.email}','approved')" class="text-green-400">✔</button>
+            <button onclick="decide('${u.email}','rejected')" class="text-red-400">✖</button>
+          </div>
+        `;
+        usersDiv.appendChild(div);
+      });
+    }
+  },4000);
+}
+
+// Admin decision
+function decide(email,decision){ api("admin_decide",{email,decision}); }
+
+// PeerJS / Video
 function initPeer(id,call=false){
   navigator.mediaDevices.getUserMedia({video:true,audio:true}).then(s=>{
-    stream=s;
-    document.getElementById("local").srcObject=s;
-    peer=new Peer(id);
+    stream=s; document.getElementById("local").srcObject=s;
+    peer = new Peer(id);
     peer.on("open",()=>{ if(call) peer.call(HOST,s); });
     peer.on("call",c=>{
       c.answer(s);
       c.on("stream",rs=>document.getElementById("remote").srcObject=rs);
     });
-  });
+    peer.on("error",e=>toast(e.type,"#ef4444"));
+  }).catch(e=>toast("Camera Error","#ef4444"));
 }
-</script>
 
+// Mute/unmute
+function mute(){ if(stream) stream.getAudioTracks()[0].enabled = !stream.getAudioTracks()[0].enabled; }
+
+// End call
+function endCall(){ location.reload(); }
+
+</script>
 </body>
 </html>
