@@ -5,58 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Secure Connect</title>
 
-<!-- Tailwind -->
 <script src="https://cdn.tailwindcss.com"></script>
-<!-- PeerJS -->
 <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
-<!-- Icons -->
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-<!-- Animations -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 
-<script>
-tailwind.config = {
-  theme: {
-    extend: {
-      colors: {
-        glass: "rgba(255,255,255,0.08)"
-      }
-    }
-  }
-}
-</script>
-
 <style>
-body { background:#000; color:#fff; overflow:hidden }
-.glass {
-  background:rgba(20,20,20,.65);
-  backdrop-filter:blur(18px);
-  border:1px solid rgba(255,255,255,.08)
-}
-.input {
-  background:rgba(0,0,0,.6);
-  border:1px solid #333;
-}
-.input:focus {
-  border-color:#06b6d4;
-  box-shadow:0 0 12px rgba(6,182,212,.3)
-}
-#toast-box {
-  position:fixed;
-  top:20px;
-  left:50%;
-  transform:translateX(-50%);
-  z-index:1000;
-  width:90%;
-  max-width:380px
-}
-.toast {
-  background:#111;
-  border-left:4px solid #06b6d4;
-  padding:12px;
-  border-radius:6px;
-  margin-bottom:10px;
-}
+body{background:#000;color:#fff;overflow:hidden}
+.glass{background:rgba(20,20,20,.65);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.08)}
+.input{background:rgba(0,0,0,.6);border:1px solid #333}
+.input:focus{border-color:#06b6d4;box-shadow:0 0 12px rgba(6,182,212,.3)}
+#toast-box{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:1000;width:90%;max-width:380px}
+.toast{background:#111;border-left:4px solid #06b6d4;padding:12px;border-radius:6px;margin-bottom:10px}
 </style>
 </head>
 
@@ -68,7 +28,7 @@ const API_URL="https://script.google.com/macros/s/AKfycbyiz_A075mO5pfqYXrJgTqNPf
 
 <div id="toast-box"></div>
 
-<div id="app" class="w-full h-screen flex items-center justify-center">
+<div class="w-full h-screen flex items-center justify-center">
 
 <!-- LOGIN -->
 <div id="login" class="glass p-8 rounded-3xl w-80 animate__animated animate__fadeIn">
@@ -78,23 +38,18 @@ const API_URL="https://script.google.com/macros/s/AKfycbyiz_A075mO5pfqYXrJgTqNPf
     <p class="text-xs text-gray-400">Authorization Required</p>
   </div>
 
-  <input id="email" type="email" placeholder="Email"
-    class="input w-full p-3 rounded-xl mb-3 outline-none">
+  <input id="email" type="email" placeholder="Email" class="input w-full p-3 rounded-xl mb-3 outline-none">
+  <input id="password" type="password" placeholder="Password" class="input w-full p-3 rounded-xl outline-none">
 
-  <input id="password" type="password" placeholder="Password"
-    class="input w-full p-3 rounded-xl outline-none">
-
-  <button id="loginBtn" onclick="login()"
-    class="w-full mt-5 bg-gradient-to-r from-cyan-600 to-blue-600 p-4 rounded-xl font-bold tracking-widest">
+  <button id="loginBtn" onclick="login()" class="w-full mt-5 bg-gradient-to-r from-cyan-600 to-blue-600 p-4 rounded-xl font-bold tracking-widest">
     ENTER
   </button>
 </div>
 
 <!-- WAIT -->
-<div id="wait" class="hidden flex flex-col items-center text-center animate__animated animate__zoomIn">
+<div id="wait" class="hidden flex flex-col items-center text-center">
   <div class="w-24 h-24 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mb-6"></div>
   <h2 class="text-xl font-bold">Waiting for approval</h2>
-  <p class="text-gray-400 text-sm mt-2">Host verification pending</p>
 </div>
 
 <!-- ADMIN -->
@@ -106,17 +61,7 @@ const API_URL="https://script.google.com/macros/s/AKfycbyiz_A075mO5pfqYXrJgTqNPf
 <!-- VIDEO -->
 <div id="video" class="hidden absolute inset-0 bg-black">
   <video id="remote" autoplay playsinline class="w-full h-full object-cover"></video>
-  <video id="local" autoplay muted playsinline
-    class="absolute bottom-4 right-4 w-36 rounded-xl border border-gray-600"></video>
-
-  <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-4">
-    <button onclick="mute()" class="glass p-4 rounded-full">
-      <span class="material-icons">mic</span>
-    </button>
-    <button onclick="end()" class="bg-red-600 p-4 rounded-full">
-      <span class="material-icons">call_end</span>
-    </button>
-  </div>
+  <video id="local" autoplay muted playsinline class="absolute bottom-4 right-4 w-36 rounded-xl border border-gray-600"></video>
 </div>
 
 </div>
@@ -127,16 +72,11 @@ const HOST="SECURE_ADMIN_MASTER_ID_V1";
 
 function toast(msg,color="#06b6d4"){
   const t=document.createElement("div");
-  t.className="toast animate__animated animate__fadeInDown";
+  t.className="toast";
   t.style.borderLeftColor=color;
   t.innerText=msg;
-  toast-box.appendChild(t);
+  document.getElementById("toast-box").appendChild(t);
   setTimeout(()=>t.remove(),3000);
-}
-
-function show(id){
-  ["login","wait","video"].forEach(x=>document.getElementById(x).classList.add("hidden"));
-  document.getElementById(id).classList.remove("hidden");
 }
 
 async function api(action,payload){
@@ -149,22 +89,38 @@ async function api(action,payload){
 }
 
 async function login(){
-  const email=email.value.trim(), pass=password.value.trim();
-  if(!email||!pass) return toast("Enter credentials","#ef4444");
-  loginBtn.disabled=true;
-  loginBtn.innerText="VERIFYING…";
-  const r=await api("login",{email,password:pass});
-  if(!r||!r.success){
-    toast("Access denied","#ef4444");
-    loginBtn.disabled=false; loginBtn.innerText="ENTER";
+  const emailVal = document.getElementById("email").value.trim();
+  const passVal  = document.getElementById("password").value.trim();
+  const btn = document.getElementById("loginBtn");
+
+  if(!emailVal || !passVal){
+    toast("Enter credentials","#ef4444");
     return;
   }
-  user={email,role:r.role};
+
+  btn.disabled=true;
+  btn.innerText="VERIFYING...";
+
+  const r = await api("login",{ email:emailVal, password:passVal });
+
+  if(!r || !r.success){
+    toast("Access denied","#ef4444");
+    btn.disabled=false;
+    btn.innerText="ENTER";
+    return;
+  }
+
+  user={ email:emailVal, role:r.role };
+
+  document.getElementById("login").classList.add("hidden");
+
   if(r.role==="admin"){
-    show("video"); document.getElementById("admin").classList.remove("hidden");
-    initPeer(HOST); pollAdmin();
+    document.getElementById("video").classList.remove("hidden");
+    document.getElementById("admin").classList.remove("hidden");
+    initPeer(HOST);
   } else {
-    show("wait"); pollClient();
+    document.getElementById("wait").classList.remove("hidden");
+    pollClient();
   }
 }
 
@@ -172,48 +128,27 @@ function pollClient(){
   const i=setInterval(async()=>{
     const r=await api("check_status",{email:user.email});
     if(r.status==="approved"){
-      clearInterval(i); toast("Access granted","#10b981");
-      show("video"); initPeer(null,true);
+      clearInterval(i);
+      document.getElementById("wait").classList.add("hidden");
+      document.getElementById("video").classList.remove("hidden");
+      initPeer(null,true);
     }
-    if(r.status==="rejected"){ clearInterval(i); location.reload(); }
   },3000);
 }
 
-function pollAdmin(){
-  setInterval(async()=>{
-    const r=await api("get_waiting");
-    users.innerHTML="";
-    r.users.forEach(u=>{
-      users.innerHTML+=`
-      <div class="flex justify-between items-center bg-gray-800 p-2 rounded">
-        <span class="text-xs truncate">${u.email}</span>
-        <div class="flex gap-1">
-          <button onclick="decide('${u.email}','approved')" class="text-green-400">✔</button>
-          <button onclick="decide('${u.email}','rejected')" class="text-red-400">✖</button>
-        </div>
-      </div>`;
-    });
-  },4000);
-}
-
-function decide(e,d){ api("admin_decide",{email:e,decision:d}); }
-
 function initPeer(id,call=false){
   navigator.mediaDevices.getUserMedia({video:true,audio:true}).then(s=>{
-    stream=s; local.srcObject=s;
+    stream=s;
+    document.getElementById("local").srcObject=s;
     peer=new Peer(id);
-    peer.on("open",pid=>{ if(call) peer.call(HOST,s); });
+    peer.on("open",()=>{ if(call) peer.call(HOST,s); });
     peer.on("call",c=>{
       c.answer(s);
-      c.on("stream",rs=>remote.srcObject=rs);
+      c.on("stream",rs=>document.getElementById("remote").srcObject=rs);
     });
-    peer.on("error",e=>toast(e.type,"#ef4444"));
   });
 }
-
-function mute(){ const t=stream.getAudioTracks()[0]; t.enabled=!t.enabled; }
-function end(){ location.reload(); }
 </script>
 
 </body>
-  </html>
+</html>
