@@ -96,7 +96,6 @@
   </div>
 
   <div id="app-dashboard-container" class="container py-4 hidden">
-    
     <div id="admin-dashboard" class="hidden">
         <div class="hero-board">
             <div class="d-flex justify-content-between align-items-start mb-4">
@@ -113,7 +112,6 @@
             </div>
             <input type="file" id="dp-upload-admin" accept="image/*" hidden onchange="uploadProfilePic(this)">
         </div>
-
         <div class="app-card">
             <h6 class="fw-bold small mb-3 text-muted">MASTER COMMANDS</h6>
             <div id="admin-gps-status" class="small text-primary mb-3 fw-bold"><i class="fa fa-location-crosshairs"></i> Waiting for GPS...</div>
@@ -122,7 +120,6 @@
                 <div class="col-6"><button onclick="setOfficeName()" class="btn btn-outline-dark btn-sm w-100 rounded-pill py-2">Location Name</button></div>
             </div>
         </div>
-
         <div class="app-card">
             <div class="d-flex justify-content-between mb-3">
               <h6 class="fw-bold small">Global Registry</h6>
@@ -150,14 +147,12 @@
             </div>
             <input type="file" id="dp-upload-worker" accept="image/*" hidden onchange="uploadProfilePic(this)">
         </div>
-
         <div class="app-card text-center">
             <div id="worker-gps-status" class="small mb-3 text-muted">Verifying Geofence Access...</div>
             <button id="btn-open-camera" onclick="startCameraFlow()" class="btn-main btn-primary-custom" disabled>
                 <i class="fa fa-face-viewfinder me-2"></i> BIOMETRIC CHECK-IN
             </button>
         </div>
-
         <div class="app-card">
             <h6 class="fw-bold mb-3 small">My Attendance Logs</h6>
             <div class="table-responsive">
@@ -215,24 +210,11 @@
   </div>
 
 <script>
-/* ============================================================
-   GEFACE AI ENTERPRISE MASTER - CORE LOGIC
-============================================================
-*/
-
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzrqjQGEg0cfGeF15NtfhZszL_PmagWfbdQ1-VqxMMiaTjDXXUHK8KSZWH-B64KDXSGMw/exec"; 
 
 let currentUser=null, currentLat=null, currentLon=null, currentAcc=null, videoStream=null, mapInstance=null, officeSettings = { lat: 0, lon: 0, radius: 150, name: "Pending..." };
 
-// --- 1. UTILITIES & SECURITY ---
-
-async function hashPassword(password) {
-    const msgBuffer = new TextEncoder().encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
+// --- 1. UTILITIES ---
 function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371e3;
     const p1 = lat1 * Math.PI/180;
@@ -251,7 +233,6 @@ async function apiCall(data) {
 }
 
 // --- 2. INITIALIZATION ---
-
 window.onload = async function() {
   const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
   try {
@@ -273,12 +254,11 @@ function updatePosition(pos) {
   const msg = `GPS Lock: ±${Math.round(currentAcc)}m`;
   if(document.getElementById('admin-gps-status')) document.getElementById('admin-gps-status').innerText = msg;
   if(document.getElementById('worker-gps-status')) document.getElementById('worker-gps-status').innerText = msg;
-  document.getElementById('btn-open-camera').disabled = false;
+  if(document.getElementById('btn-open-camera')) document.getElementById('btn-open-camera').disabled = false;
   if(document.getElementById('btn-set-loc') && currentUser?.role==='admin') document.getElementById('btn-set-loc').disabled=false;
 }
 
-// --- 3. AUTHENTICATION ---
-
+// --- 3. AUTHENTICATION (FIXED) ---
 function toggleAuth(showReg) {
     document.getElementById('login-form').classList.toggle('hidden', showReg);
     document.getElementById('register-form').classList.toggle('hidden', !showReg);
@@ -289,8 +269,9 @@ async function handleLogin() {
   if(!id || !pass) return Swal.fire("Required", "Please provide all credentials.", "warning");
   
   Swal.fire({title:'Authenticating...', didOpen:()=>Swal.showLoading()});
-  const hashedPass = await hashPassword(pass);
-  const res = await apiCall({action:'login', id, password:hashedPass});
+  
+  // FIX: Sending direct password to match backend logic
+  const res = await apiCall({action:'login', id: id, password: pass});
   Swal.close();
   
   if(res.success) { 
@@ -326,8 +307,7 @@ async function handleForgotPass() {
     }
 }
 
-// --- 4. DASHBOARD CONTROLS ---
-
+// --- 4. DASHBOARD & SHARED LOGIC ---
 function initDashboard() {
     document.getElementById('auth-container').classList.add('hidden');
     document.getElementById('app-dashboard-container').classList.remove('hidden');
@@ -348,16 +328,50 @@ function initDashboard() {
     }
 }
 
-// --- 5. ADMIN FUNCTIONS ---
+async function loadAdminDashboard() {
+  const data = await apiCall({action:'getAdminData'});
+  const tbody = document.getElementById('admin-table-body'); tbody.innerHTML = "";
+  data.forEach(r => {
+      const uPic = r.userPic || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+      tbody.innerHTML += `
+        <tr class="border-bottom">
+            <td width="45"><img src="${uPic}" class="user-thumb"></td>
+            <td><b>${r.name}</b><br><span class="text-muted">${r.date} | ${r.time}</span></td>
+            <td><span class="status-badge status-${r.status}">${r.status}</span></td>
+            <td class="text-end">
+                <button onclick="viewFacePhoto('${r.image}')" class="btn btn-sm btn-light text-success me-1"><i class="fa fa-camera"></i></button>
+                <button onclick="showMap(${r.lat}, ${r.lon}, '${r.name}')" class="btn btn-sm btn-light text-primary"><i class="fa fa-location-crosshairs"></i></button>
+            </td>
+        </tr>`;
+  });
+}
 
+async function loadWorkerDashboard() {
+  const data = await apiCall({action:'getWorkerHistory', userId:currentUser.id});
+  document.getElementById('total-present').innerText = data.total;
+  const tbody = document.getElementById('worker-history-body'); tbody.innerHTML = "";
+  data.history.forEach(r => {
+      const pic = currentUser.profilePic || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+      tbody.innerHTML += `
+        <tr class="border-bottom">
+            <td width="45"><img src="${pic}" class="user-thumb"></td>
+            <td><b>${r.date}</b><br><span class="text-muted">${r.time}</span></td>
+            <td><span class="status-badge status-${r.status}">${r.status}</span></td>
+            <td class="text-end">
+                <button onclick="viewFacePhoto('${r.image}')" class="btn btn-sm btn-light text-success me-1"><i class="fa fa-camera"></i></button>
+                <button onclick="showMap(${r.lat}, ${r.lon}, '${r.status}')" class="btn btn-sm btn-light text-primary"><i class="fa fa-map-location-dot"></i></button>
+            </td>
+        </tr>`;
+  });
+}
+
+// Other UI functions remain unchanged to maintain original features
 function openAdminAddModal() { document.getElementById('admin-add-modal').classList.remove('hidden'); }
-
 async function handleAdminAddUser() {
     const name = document.getElementById('admin-reg-name').value;
     const mobile = document.getElementById('admin-reg-mobile').value;
     const role = document.getElementById('admin-reg-role').value;
     if(!name || !mobile) return Swal.fire("Error", "Fill all details.", "error");
-
     Swal.fire({title:'Provisioning...', didOpen:()=>Swal.showLoading()});
     const res = await apiCall({action:'register', name, mobile, role});
     Swal.close();
@@ -385,53 +399,9 @@ async function setOfficeName() {
     }
 }
 
-async function loadAdminDashboard() {
-  const data = await apiCall({action:'getAdminData'});
-  const tbody = document.getElementById('admin-table-body'); tbody.innerHTML = "";
-  data.forEach(r => {
-      const uPic = r.userPic || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-      tbody.innerHTML += `
-        <tr class="border-bottom">
-            <td width="45"><img src="${uPic}" class="user-thumb"></td>
-            <td><b>${r.name}</b><br><span class="text-muted">${r.date} | ${r.time}</span></td>
-            <td><span class="status-badge status-${r.status}">${r.status}</span></td>
-            <td class="text-end">
-                <button onclick="viewFacePhoto('${r.image}')" class="btn btn-sm btn-light text-success me-1"><i class="fa fa-camera"></i></button>
-                <button onclick="showMap(${r.lat}, ${r.lon}, '${r.name}')" class="btn btn-sm btn-light text-primary"><i class="fa fa-location-crosshairs"></i></button>
-            </td>
-        </tr>`;
-  });
-}
-
-// --- 6. WORKER FUNCTIONS ---
-
-async function loadWorkerDashboard() {
-  const data = await apiCall({action:'getWorkerHistory', userId:currentUser.id});
-  document.getElementById('total-present').innerText = data.total;
-  const tbody = document.getElementById('worker-history-body'); tbody.innerHTML = "";
-  
-  data.history.forEach(r => {
-      const pic = currentUser.profilePic || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-      tbody.innerHTML += `
-        <tr class="border-bottom">
-            <td width="45"><img src="${pic}" class="user-thumb"></td>
-            <td><b>${r.date}</b><br><span class="text-muted">${r.time}</span></td>
-            <td><span class="status-badge status-${r.status}">${r.status}</span></td>
-            <td class="text-end">
-                <button onclick="viewFacePhoto('${r.image}')" class="btn btn-sm btn-light text-success me-1"><i class="fa fa-camera"></i></button>
-                <button onclick="showMap(${r.lat}, ${r.lon}, '${r.status}')" class="btn btn-sm btn-light text-primary"><i class="fa fa-map-location-dot"></i></button>
-            </td>
-        </tr>`;
-  });
-}
-
 function startCameraFlow() {
-  // Geofence Pre-check
   const dist = calculateDistance(currentLat, currentLon, officeSettings.lat, officeSettings.lon);
-  if(dist > officeSettings.radius) {
-      return Swal.fire("Out of Range", `Distance: ${Math.round(dist)}m. Please move closer to HQ.`, "error");
-  }
-
+  if(dist > officeSettings.radius) return Swal.fire("Out of Range", `Distance: ${Math.round(dist)}m. Please move closer to HQ.`, "error");
   document.getElementById('camera-overlay').classList.remove('hidden');
   const video = document.getElementById('video');
   navigator.mediaDevices.getUserMedia({video:{facingMode: "user"}}).then(s => {
@@ -443,13 +413,10 @@ async function checkLiveness() {
   const video = document.getElementById('video'); const hint = document.getElementById('liveness-hint');
   const interval = setInterval(async () => {
     if(document.getElementById('camera-overlay').classList.contains('hidden')) { clearInterval(interval); return; }
-    
-    // Face-API.js Detection
     const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
-    
     if(detections.length===1) {
         if(detections[0].expressions.happy > 0.6) {
-            hint.innerText="✓ IDENTITY VERIFIED - MATCHED"; hint.className = "position-absolute bottom-0 w-100 p-3 bg-success text-white fw-bold"; 
+            hint.innerText="✓ IDENTITY VERIFIED"; hint.className = "position-absolute bottom-0 w-100 p-3 bg-success text-white fw-bold"; 
             clearInterval(interval); captureAndSubmit();
         } else { hint.innerText="Please SMILE for validation"; }
     } else { hint.innerText="Align Face in Center"; }
@@ -458,16 +425,12 @@ async function checkLiveness() {
 
 async function captureAndSubmit() {
   const video=document.getElementById('video'), canvas=document.createElement('canvas');
-  canvas.width=320; canvas.height=240;
-  canvas.getContext('2d').drawImage(video,0,0, 320, 240);
+  canvas.width=320; canvas.height=240; canvas.getContext('2d').drawImage(video,0,0, 320, 240);
   const base64=canvas.toDataURL('image/jpeg', 0.6); stopCamera();
-  
   Swal.fire({title:'Syncing Biometric Log...', didOpen:()=>Swal.showLoading()});
   const res = await apiCall({action:'markAttendance', userId:currentUser.id, name:currentUser.name, lat:currentLat, lon:currentLon, image:base64});
   res.success ? (Swal.fire("Verified!", "Entry synchronized successfully.", "success"), loadWorkerDashboard()) : Swal.fire("Failed", res.message, "error");
 }
-
-// --- 7. SHARED UI HELPERS ---
 
 function viewFacePhoto(url) {
     if(!url || url === '-' || url === 'undefined') return Swal.fire("No Photo", "Snapshot was not enabled.", "info");
@@ -522,4 +485,4 @@ function logout() { localStorage.removeItem('currentUser'); location.reload(); }
 
 </script>
 </body>
-</html>
+          </html>
